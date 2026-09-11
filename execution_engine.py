@@ -28,9 +28,12 @@ def trace_function(frame, event, arg):
                 elif previous_variables[name] != value:
                     changes[name] = value
 
-            print("Line executed:", frame.f_lineno)
-            print("Variables:", current_variables)
-            print("Changes:", changes)
+            execution_state = {
+                "line_number": frame.f_lineno,
+                "changes": changes
+            }
+
+            print("Execution State:", execution_state)
 
             previous_variables = current_variables.copy()
 
