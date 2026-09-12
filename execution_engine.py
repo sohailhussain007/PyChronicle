@@ -4,6 +4,7 @@ import runpy
 TARGET_FILE = "trace_test.py"
 
 previous_variables = {}
+execution_history = []
 
 
 def trace_function(frame, event, arg):
@@ -33,7 +34,7 @@ def trace_function(frame, event, arg):
                 "changes": changes
             }
 
-            print("Execution State:", execution_state)
+            execution_history.append(execution_state)
 
             previous_variables = current_variables.copy()
 
@@ -45,3 +46,9 @@ sys.settrace(trace_function)
 runpy.run_path(TARGET_FILE)
 
 sys.settrace(None)
+
+
+print("\nExecution History:")
+
+for state in execution_history:
+    print(state)
