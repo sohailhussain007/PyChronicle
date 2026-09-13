@@ -77,6 +77,18 @@ class SQLiteStateStorage(StateStorage):
         )
         self.connection.commit()
 
+    def get_states(self):
+        """Return all stored variable states chronologically."""
+        cursor = self.connection.execute(
+            """
+            SELECT timestamp, line_number, variable_name, serialized_value
+            FROM variable_states
+            ORDER BY timestamp ASC, id ASC
+            """
+        )
+
+        return cursor.fetchall()
+
     def close(self):
         """Close the database connection."""
         self.connection.close()
