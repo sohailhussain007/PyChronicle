@@ -54,6 +54,29 @@ class SQLiteStateStorage(StateStorage):
         )
         self.connection.commit()
 
+    def save_state(
+        self,
+        timestamp,
+        line_number,
+        variable_name,
+        serialized_value,
+    ):
+        """Save a variable state to SQLite."""
+        self.connection.execute(
+            """
+            INSERT INTO variable_states
+            (timestamp, line_number, variable_name, serialized_value)
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                timestamp,
+                line_number,
+                variable_name,
+                serialized_value,
+            ),
+        )
+        self.connection.commit()
+
     def close(self):
         """Close the database connection."""
         self.connection.close()
