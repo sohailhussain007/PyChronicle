@@ -110,3 +110,52 @@ class SQLiteStateStorage(StateStorage):
     def close(self):
         """Close the database connection."""
         self.connection.close()
+
+
+class InMemoryStateStorage(StateStorage):
+    """In-memory storage for chronological variable states."""
+
+    def __init__(self):
+        """Initialize an empty in-memory state list."""
+        self.states = []
+
+    def save_state(
+        self,
+        timestamp,
+        line_number,
+        variable_name,
+        value,
+    ):
+        """Serialize and store a variable state in memory."""
+        serialized_value = pickle.dumps(value)
+
+        self.states.append(
+            (
+                timestamp,
+                line_number,
+                variable_name,
+                serialized_value,
+            )
+        )
+
+    def get_states(self):
+        """Return all stored variable states chronologically."""
+        ordered_states = sorted(
+            self.states,
+            key=lambda state: state[0],
+        )
+
+        return [
+            (
+                timestamp,
+                line_number,
+                variable_name,
+                pickle.loads(serialized_value),
+            )
+            for timestamp, line_number, variable_name, serialized_value
+            in ordered_states
+        ]
+
+    def clear(self):
+        """Remove all stored states from memory."""
+        self.states = []
