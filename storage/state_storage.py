@@ -22,8 +22,8 @@ class StateStorage:
         """Save a variable state."""
         raise NotImplementedError
 
-    def get_states(self):
-        """Return all stored variable states chronologically."""
+    def get_states(self, variable_name=None):
+        """Return stored variable states chronologically."""
         raise NotImplementedError
 
     def clear(self):
@@ -104,15 +104,32 @@ class SQLiteStateStorage(StateStorage):
         )
         self.connection.commit()
 
-    def get_states(self):
-        """Return all stored variable states chronologically."""
-        cursor = self.connection.execute(
-            """
-            SELECT timestamp, line_number, variable_name, serialized_value
-            FROM variable_states
-            ORDER BY timestamp ASC, id ASC
-            """
-        )
+    def get_states(self, variable_name=None):
+        """Return stored variable states chronologically."""
+        if variable_name is None:
+            cursor = self.connection.execute(
+                """
+                SELECT timestamp, line_number, variable_name, serialized_value
+                FROM variable_states
+                ORDER BY timestamp ASC, id ASC
+                """
+            )
+        else:
+            if not isinstance(variable_name, str):
+                raise TypeError("variable_name must be a string")
+
+            if not variable_name:
+                raise ValueError("variable_name cannot be empty")
+
+            cursor = self.connection.execute(
+                """
+                SELECT timestamp, line_number, variable_name, serialized_value
+                FROM variable_states
+                WHERE variable_name = ?
+                ORDER BY timestamp ASC, id ASC
+                """,
+                (variable_name,),
+            )
 
         rows = cursor.fetchall()
 
@@ -164,12 +181,26 @@ class InMemoryStateStorage(StateStorage):
             )
         )
 
-    def get_states(self):
-        """Return all stored variable states chronologically."""
+    def get_states(self, variable_name=None):
+        """Return stored variable states chronologically."""
+        if variable_name is not None:
+            if not isinstance(variable_name, str):
+                raise TypeError("variable_name must be a string")
+
+            if not variable_name:
+                raise ValueError("variable_name cannot be empty")
+
         ordered_states = sorted(
             self.states,
             key=lambda state: state[0],
         )
+
+        if variable_name is not None:
+            ordered_states = [
+                state
+                for state in ordered_states
+                if state[2] == variable_name
+            ]
 
         return [
             (
