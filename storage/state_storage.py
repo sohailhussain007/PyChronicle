@@ -102,6 +102,11 @@ class SQLiteStateStorage(StateStorage):
             for timestamp, line_number, variable_name, serialized_value in rows
         ]
 
+    def clear(self):
+        """Remove all stored variable states."""
+        self.connection.execute("DELETE FROM variable_states")
+        self.connection.commit()
+
     def close(self):
         """Close the database connection."""
         self.connection.close()
