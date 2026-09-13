@@ -5,6 +5,7 @@ This module provides the foundation for storing
 chronological variable states during program execution.
 """
 
+import pickle
 import sqlite3
 
 
@@ -59,9 +60,11 @@ class SQLiteStateStorage(StateStorage):
         timestamp,
         line_number,
         variable_name,
-        serialized_value,
+        value,
     ):
-        """Save a variable state to SQLite."""
+        """Serialize and save a variable state to SQLite."""
+        serialized_value = pickle.dumps(value)
+
         self.connection.execute(
             """
             INSERT INTO variable_states
@@ -87,7 +90,17 @@ class SQLiteStateStorage(StateStorage):
             """
         )
 
-        return cursor.fetchall()
+        rows = cursor.fetchall()
+
+        return [
+            (
+                timestamp,
+                line_number,
+                variable_name,
+                pickle.loads(serialized_value),
+            )
+            for timestamp, line_number, variable_name, serialized_value in rows
+        ]
 
     def close(self):
         """Close the database connection."""
