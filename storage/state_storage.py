@@ -31,6 +31,24 @@ class StateStorage:
         raise NotImplementedError
 
 
+def _validate_state(timestamp, line_number, variable_name):
+    """Validate common state information."""
+    if not isinstance(timestamp, (int, float)):
+        raise TypeError("timestamp must be a number")
+
+    if not isinstance(line_number, int):
+        raise TypeError("line_number must be an integer")
+
+    if line_number < 1:
+        raise ValueError("line_number must be greater than or equal to 1")
+
+    if not isinstance(variable_name, str):
+        raise TypeError("variable_name must be a string")
+
+    if not variable_name:
+        raise ValueError("variable_name cannot be empty")
+
+
 class SQLiteStateStorage(StateStorage):
     """SQLite-based storage for chronological variable states."""
 
@@ -63,6 +81,8 @@ class SQLiteStateStorage(StateStorage):
         value,
     ):
         """Serialize and save a variable state to SQLite."""
+        _validate_state(timestamp, line_number, variable_name)
+
         serialized_value = pickle.dumps(value)
 
         self.connection.execute(
@@ -108,7 +128,7 @@ class SQLiteStateStorage(StateStorage):
         self.connection.commit()
 
     def close(self):
-        """Close the database connection."""
+        """Close the database connection.""" 
         self.connection.close()
 
 
@@ -127,6 +147,8 @@ class InMemoryStateStorage(StateStorage):
         value,
     ):
         """Serialize and store a variable state in memory."""
+        _validate_state(timestamp, line_number, variable_name)
+
         serialized_value = pickle.dumps(value)
 
         self.states.append(
