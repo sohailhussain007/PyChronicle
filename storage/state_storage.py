@@ -30,6 +30,10 @@ class StateStorage:
         """Clear all stored states."""
         raise NotImplementedError
 
+    def close(self):
+        """Close the storage."""
+        raise NotImplementedError
+
 
 def _validate_state(timestamp, line_number, variable_name):
     """Validate common state information."""
@@ -128,7 +132,7 @@ class SQLiteStateStorage(StateStorage):
         self.connection.commit()
 
     def close(self):
-        """Close the database connection.""" 
+        """Close the database connection."""
         self.connection.close()
 
 
@@ -180,4 +184,8 @@ class InMemoryStateStorage(StateStorage):
 
     def clear(self):
         """Remove all stored states from memory."""
+        self.states = []
+
+    def close(self):
+        """Close the in-memory storage."""
         self.states = []
