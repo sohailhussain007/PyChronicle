@@ -7,6 +7,10 @@ previous_variables = {}
 execution_history = []
 
 
+def serialize_value(value):
+    return repr(value)
+
+
 def trace_function(frame, event, arg):
     global previous_variables
 
@@ -25,9 +29,9 @@ def trace_function(frame, event, arg):
 
             for name, value in current_variables.items():
                 if name not in previous_variables:
-                    changes[name] = value
+                    changes[name] = serialize_value(value)
                 elif previous_variables[name] != value:
-                    changes[name] = value
+                    changes[name] = serialize_value(value)
 
             execution_state = {
                 "line_number": frame.f_lineno,
@@ -37,6 +41,7 @@ def trace_function(frame, event, arg):
             execution_history.append(execution_state)
 
             previous_variables = current_variables.copy()
+
 
     return trace_function
 
