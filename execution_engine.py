@@ -1,5 +1,6 @@
 import sys
 import runpy
+import copy
 
 TARGET_FILE = "trace_test.py"
 
@@ -40,8 +41,7 @@ def trace_function(frame, event, arg):
 
             execution_history.append(execution_state)
 
-            previous_variables = current_variables.copy()
-
+            previous_variables = copy.deepcopy(current_variables)
 
     return trace_function
 
