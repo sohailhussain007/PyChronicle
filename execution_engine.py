@@ -13,12 +13,17 @@ def serialize_value(value):
 
 
 def trace_function(frame, event, arg):
-    global previous_variables
-
     if event == "line":
         filename = frame.f_code.co_filename
 
         if filename.endswith(TARGET_FILE):
+
+            frame_id = id(frame)
+
+            if frame_id not in previous_variables:
+                previous_variables[frame_id] = {}
+
+            old_variables = previous_variables[frame_id]
 
             current_variables = {
                 name: value
@@ -29,9 +34,11 @@ def trace_function(frame, event, arg):
             changes = {}
 
             for name, value in current_variables.items():
-                if name not in previous_variables:
+
+                if name not in old_variables:
                     changes[name] = serialize_value(value)
-                elif previous_variables[name] != value:
+
+                elif old_variables[name] != value:
                     changes[name] = serialize_value(value)
 
             execution_state = {
@@ -41,7 +48,11 @@ def trace_function(frame, event, arg):
 
             execution_history.append(execution_state)
 
-            previous_variables = copy.deepcopy(current_variables)
+            previous_variables[frame_id] = copy.deepcopy(current_variables)
+
+    elif event == "return":
+        frame_id = id(frame)
+        previous_variables.pop(frame_id, None)
 
     return trace_function
 
