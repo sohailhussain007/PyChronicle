@@ -1,11 +1,11 @@
-def add(a, b):
-    result = a + b
+def divide(a, b):
+    result = a / b
     return result
 
 
-total = 0
+x = 10
+y = 0
 
-for i in range(3):
-    total = add(total, i)
+result = divide(x, y)
 
-print("Final Result:", total)
+print("Result:", result)

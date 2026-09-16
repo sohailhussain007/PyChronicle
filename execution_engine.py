@@ -50,6 +50,29 @@ def trace_function(frame, event, arg):
 
             previous_variables[frame_id] = copy.deepcopy(current_variables)
 
+    elif event == "exception":
+        filename = frame.f_code.co_filename
+
+        if filename.endswith(TARGET_FILE):
+
+            exception_type, exception_value, traceback = arg
+
+            execution_state = {
+                "line_number": frame.f_lineno,
+                "event": "exception",
+                "exception_type": exception_type.__name__,
+                "exception_message": str(exception_value)
+            }
+
+            execution_history.append(execution_state)
+
+            print(
+                "Exception:",
+                exception_type.__name__,
+                "-",
+                str(exception_value)
+            )
+
     elif event == "return":
         frame_id = id(frame)
         previous_variables.pop(frame_id, None)
@@ -59,7 +82,10 @@ def trace_function(frame, event, arg):
 
 sys.settrace(trace_function)
 
-runpy.run_path(TARGET_FILE)
+try:
+    runpy.run_path(TARGET_FILE)
+except Exception as error:
+    print("Program stopped:", type(error).__name__, "-", str(error))
 
 sys.settrace(None)
 
