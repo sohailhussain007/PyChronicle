@@ -1,14 +1,20 @@
 import sys
 import copy
+import time
 
 from ast_rewriter import rewrite_source
+from storage.state_storage import SQLiteStateStorage
 
 
 TARGET_FILE = "trace_test.py"
+DATABASE_FILE = "pychronicle.db"
 
 previous_variables = {}
 execution_history = []
 captured_states = []
+
+storage = SQLiteStateStorage(DATABASE_FILE)
+storage.clear()
 
 
 def serialize_value(value):
@@ -16,18 +22,28 @@ def serialize_value(value):
 
 
 def capture_state(variable_name, variable_value, line_number):
+    serialized_value = serialize_value(variable_value)
+
     captured_states.append({
         "variable_name": variable_name,
-        "variable_value": serialize_value(variable_value),
+        "variable_value": serialized_value,
         "line_number": line_number
     })
 
     execution_history.append({
         "line_number": line_number,
         "changes": {
-            variable_name: serialize_value(variable_value)
+            variable_name: serialized_value
         }
     })
+
+    storage.save_state(
+        timestamp=time.time(),
+        line_number=line_number,
+        variable_name=variable_name,
+        value=variable_value
+    )
+
 
 def trace_function(frame, event, arg):
 
@@ -49,7 +65,8 @@ def trace_function(frame, event, arg):
                 for name, value in frame.f_locals.items()
                 if not name.startswith("__")
                 and name != "capture_state"
-            }  
+            }
+
             changes = {}
 
             for name, value in current_variables.items():
@@ -59,13 +76,6 @@ def trace_function(frame, event, arg):
 
                 elif old_variables[name] != value:
                     changes[name] = serialize_value(value)
-
-            # execution_state = {
-            #     "line_number": frame.f_lineno,
-            #     "changes": changes
-            # }
-
-            # execution_history.append(execution_state)
 
             previous_variables[frame_id] = copy.deepcopy(
                 current_variables
@@ -79,55 +89,40 @@ def trace_function(frame, event, arg):
 
             exception_type, exception_value, traceback = arg
 
-            execution_state = {
+            execution_history.append({
                 "line_number": frame.f_lineno,
                 "event": "exception",
                 "exception_type": exception_type.__name__,
                 "exception_message": str(exception_value)
-            }
-
-            execution_history.append(execution_state)
+            })
 
     elif event == "return":
 
         frame_id = id(frame)
-
         previous_variables.pop(frame_id, None)
 
     return trace_function
 
 
-# -----------------------------------
-# Read original Python file
-# -----------------------------------
-
+# Read target Python file
 with open(TARGET_FILE, "r") as file:
     source_code = file.read()
 
 
-# -----------------------------------
-# Rewrite code using AST Rewriter
-# -----------------------------------
-
+# Rewrite source code using AST
 rewritten_code = rewrite_source(source_code)
 
 print("Rewritten Code:\n")
 print(rewritten_code)
 
 
-# -----------------------------------
-# Provide capture_state() to rewritten code
-# -----------------------------------
-
+# Provide capture_state to rewritten program
 namespace = {
     "capture_state": capture_state
 }
 
 
-# -----------------------------------
-# Execute rewritten code with tracer
-# -----------------------------------
-
+# Run target program
 sys.settrace(trace_function)
 
 try:
@@ -152,11 +147,8 @@ except Exception as error:
 finally:
 
     sys.settrace(None)
+    storage.close()
 
-
-# -----------------------------------
-# AST captured states
-# -----------------------------------
 
 print("\nAST Captured States:")
 
@@ -164,11 +156,19 @@ for state in captured_states:
     print(state)
 
 
-# -----------------------------------
-# Execution history
-# -----------------------------------
-
 print("\nExecution History:")
 
 for state in execution_history:
     print(state)
+
+
+print("\nSQLite States:")
+
+read_storage = SQLiteStateStorage(DATABASE_FILE)
+
+states = read_storage.get_states()
+
+for state in states:
+    print(state)
+
+read_storage.close()

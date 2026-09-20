@@ -5,7 +5,7 @@ def add(a, b):
 
 total = 0
 
-for i in range(3):
+for i in range(5):
     total = add(total, i)
 
 print("Final Result:", total)
