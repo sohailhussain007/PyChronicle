@@ -1,11 +1,6 @@
-def add(a, b):
-    result = a + b
-    return result
+x = 10
+x = 10
+x = 20
+y = 30
 
-
-total = 0
-
-for i in range(5):
-    total = add(total, i)
-
-print("Final Result:", total)
+print("Result:", x + y)

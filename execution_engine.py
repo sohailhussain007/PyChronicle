@@ -1,15 +1,19 @@
 import sys
+import sys
 import copy
 import time
 
 from ast_rewriter import rewrite_source
 from storage.state_storage import SQLiteStateStorage
+from delta_compression import calculate_delta
 
 
 TARGET_FILE = "trace_test.py"
 DATABASE_FILE = "pychronicle.db"
 
 previous_variables = {}
+previous_captured_state = {}
+
 execution_history = []
 captured_states = []
 
@@ -22,7 +26,18 @@ def serialize_value(value):
 
 
 def capture_state(variable_name, variable_value, line_number):
+    global previous_captured_state
+
     serialized_value = serialize_value(variable_value)
+
+    current_state = {
+        variable_name: serialized_value
+    }
+
+    delta = calculate_delta(
+        previous_captured_state,
+        current_state
+    )
 
     captured_states.append({
         "variable_name": variable_name,
@@ -30,19 +45,20 @@ def capture_state(variable_name, variable_value, line_number):
         "line_number": line_number
     })
 
-    execution_history.append({
-        "line_number": line_number,
-        "changes": {
-            variable_name: serialized_value
-        }
-    })
+    if delta:
+        execution_history.append({
+            "line_number": line_number,
+            "changes": delta
+        })
 
-    storage.save_state(
-        timestamp=time.time(),
-        line_number=line_number,
-        variable_name=variable_name,
-        value=variable_value
-    )
+        storage.save_state(
+            timestamp=time.time(),
+            line_number=line_number,
+            variable_name=variable_name,
+            value=variable_value
+        )
+
+    previous_captured_state.update(current_state)
 
 
 def trace_function(frame, event, arg):
@@ -156,7 +172,7 @@ for state in captured_states:
     print(state)
 
 
-print("\nExecution History:")
+print("\nDelta Execution History:")
 
 for state in execution_history:
     print(state)
