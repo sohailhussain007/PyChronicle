@@ -1,6 +1,12 @@
-x = 10
-x = 10
-x = 20
-y = 30
+def calculate_total():
+    total = 0
 
-print("Result:", x + y)
+    for i in range(1, 4):
+        total = total + i
+
+    return total
+
+
+result = calculate_total()
+
+print("Result:", result)

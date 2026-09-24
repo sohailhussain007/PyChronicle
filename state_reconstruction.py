@@ -23,7 +23,6 @@ def reconstruct_state(database_path, target_state_index):
     current_state = {}
 
     for index, row in enumerate(rows):
-
         if index > target_state_index:
             break
 
@@ -34,13 +33,3 @@ def reconstruct_state(database_path, target_state_index):
         current_state[variable_name] = value
 
     return current_state
-
-
-print("State 1:")
-print(reconstruct_state(DATABASE_FILE, 0))
-
-print("\nState 2:")
-print(reconstruct_state(DATABASE_FILE, 1))
-
-print("\nState 3:")
-print(reconstruct_state(DATABASE_FILE, 2))
