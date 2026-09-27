@@ -3,6 +3,8 @@ from textual.containers import Horizontal, Vertical
 from textual.widgets import Header, Footer, Static, Label
 from textual.binding import Binding
 
+from storage.state_storage import SQLiteStateStorage
+
 
 class PyChronicleApp(App):
 
@@ -45,7 +47,14 @@ class PyChronicleApp(App):
 
     def __init__(self):
         super().__init__()
+
         self.current_line = 1
+
+        self.storage = SQLiteStateStorage(
+            "pychronicle.db"
+        )
+
+        self.states = self.storage.get_states()
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -180,4 +189,4 @@ class PyChronicleApp(App):
 
 if __name__ == "__main__":
     app = PyChronicleApp()
-    app.run()   
+    app.run()
