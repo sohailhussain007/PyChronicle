@@ -79,16 +79,26 @@ def get_reconstructed_timeline(database_path):
 
     timeline = []
 
-    for state_index, (state_id, line_number) in enumerate(rows):
+    for state_number, (database_id, line_number) in enumerate(rows, start=1):
         state = reconstruct_state(
             database_path,
-            state_index
+            state_number - 1
         )
 
         timeline.append({
-            "state_id": state_id,
+            "state_number": state_number,
+            "database_id": database_id,
             "line_number": line_number,
             "state": state
         })
 
     return timeline
+
+def get_state_by_number(database_path, state_number):
+    timeline = get_reconstructed_timeline(database_path)
+
+    for item in timeline:
+        if item["state_number"] == state_number:
+            return item
+
+    return None
