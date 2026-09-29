@@ -102,3 +102,17 @@ def get_state_by_number(database_path, state_number):
             return item
 
     return None
+
+def get_timeline_for_ui(database_path):
+    timeline = get_reconstructed_timeline(database_path)
+
+    ui_timeline = []
+
+    for item in timeline:
+        ui_timeline.append({
+            "state_number": item["state_number"],
+            "line_number": item["line_number"],
+            "state": item["state"]
+        })
+
+    return ui_timeline
