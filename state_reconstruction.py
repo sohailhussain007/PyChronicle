@@ -116,3 +116,12 @@ def get_timeline_for_ui(database_path):
         })
 
     return ui_timeline
+
+def get_ui_state_by_number(database_path, state_number):
+    timeline = get_timeline_for_ui(database_path)
+
+    for item in timeline:
+        if item["state_number"] == state_number:
+            return item
+
+    return None
