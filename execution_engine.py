@@ -1,5 +1,4 @@
 import sys
-import sys
 import copy
 import time
 
@@ -8,7 +7,6 @@ from storage.state_storage import SQLiteStateStorage
 from delta_compression import calculate_delta
 
 
-TARGET_FILE = "trace_test.py"
 DATABASE_FILE = "pychronicle.db"
 
 previous_variables = {}
@@ -17,8 +15,8 @@ previous_captured_state = {}
 execution_history = []
 captured_states = []
 
-storage = SQLiteStateStorage(DATABASE_FILE)
-storage.clear()
+storage = None
+TARGET_FILE = None
 
 
 def serialize_value(value):
@@ -120,71 +118,79 @@ def trace_function(frame, event, arg):
     return trace_function
 
 
-# Read target Python file
-with open(TARGET_FILE, "r") as file:
-    source_code = file.read()
+def run_program(target_file):
+    global TARGET_FILE
+    global storage
+    global previous_variables
+    global previous_captured_state
+    global execution_history
+    global captured_states
 
+    TARGET_FILE = target_file
 
-# Rewrite source code using AST
-rewritten_code = rewrite_source(source_code)
+    previous_variables = {}
+    previous_captured_state = {}
+    execution_history = []
+    captured_states = []
 
-print("Rewritten Code:\n")
-print(rewritten_code)
+    storage = SQLiteStateStorage(DATABASE_FILE)
+    storage.clear()
 
+    with open(TARGET_FILE, "r") as file:
+        source_code = file.read()
 
-# Provide capture_state to rewritten program
-namespace = {
-    "capture_state": capture_state
-}
+    rewritten_code = rewrite_source(source_code)
 
+    print("Rewritten Code:\n")
+    print(rewritten_code)
 
-# Run target program
-sys.settrace(trace_function)
+    namespace = {
+        "capture_state": capture_state
+    }
 
-try:
+    sys.settrace(trace_function)
 
-    compiled_code = compile(
-        rewritten_code,
-        TARGET_FILE,
-        "exec"
-    )
+    try:
 
-    exec(compiled_code, namespace)
+        compiled_code = compile(
+            rewritten_code,
+            TARGET_FILE,
+            "exec"
+        )
 
-except Exception as error:
+        exec(compiled_code, namespace)
 
-    print(
-        "Program stopped:",
-        type(error).__name__,
-        "-",
-        str(error)
-    )
+    except Exception as error:
 
-finally:
+        print(
+            "Program stopped:",
+            type(error).__name__,
+            "-",
+            str(error)
+        )
 
-    sys.settrace(None)
-    storage.close()
+    finally:
 
+        sys.settrace(None)
+        storage.close()
 
-print("\nAST Captured States:")
+    print("\nAST Captured States:")
 
-for state in captured_states:
-    print(state)
+    for state in captured_states:
+        print(state)
 
+    print("\nDelta Execution History:")
 
-print("\nDelta Execution History:")
+    for state in execution_history:
+        print(state)
 
-for state in execution_history:
-    print(state)
+    print("\nSQLite States:")
 
+    read_storage = SQLiteStateStorage(DATABASE_FILE)
 
-print("\nSQLite States:")
+    states = read_storage.get_states()
 
-read_storage = SQLiteStateStorage(DATABASE_FILE)
+    for state in states:
+        print(state)
 
-states = read_storage.get_states()
-
-for state in states:
-    print(state)
-
-read_storage.close()
+    read_storage.close()
