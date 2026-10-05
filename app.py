@@ -4,6 +4,10 @@ from textual.widgets import Header, Footer, Static, Label
 from textual.binding import Binding
 
 from storage.state_storage import SQLiteStateStorage
+from state_reconstruction import get_timeline_for_ui
+
+
+DATABASE_FILE = "pychronicle.db"
 
 
 class PyChronicleApp(App):
@@ -51,11 +55,9 @@ class PyChronicleApp(App):
         self.current_line = 1
         self.current_state = 0
 
-        self.storage = SQLiteStateStorage(
-            "pychronicle.db"
-        )
+        self.storage = SQLiteStateStorage(DATABASE_FILE)
 
-        self.states = self.storage.get_states()
+        self.timeline = get_timeline_for_ui(DATABASE_FILE)
 
         with open("trace_test.py", "r") as file:
             self.source_lines = file.readlines()
@@ -86,9 +88,7 @@ class PyChronicleApp(App):
                 Static("WATCH VARIABLES"),
 
                 Static(
-                    "x = 10\n"
-                    "y = --\n"
-                    "z = --",
+                    "Loading...",
                     id="watch-variables"
                 ),
 
@@ -99,94 +99,86 @@ class PyChronicleApp(App):
         )
 
         yield Label(
-            "Timeline: Line 1",
+            "Timeline: Loading...",
             id="timeline-label"
         )
 
         yield Footer()
 
-    def action_next_line(self):
-        if self.current_state < len(self.states) - 1:
-            self.current_state += 1
-
-            self.current_line = self.states[
-                self.current_state
-            ][1]
+    def on_mount(self):
+        if self.timeline:
+            self.current_line = self.timeline[0]["line_number"]
 
         self.update_ui()
+
+    def action_next_line(self):
+        if self.current_state < len(self.timeline) - 1:
+            self.current_state += 1
+
+            self.current_line = self.timeline[
+                self.current_state
+            ]["line_number"]
+
+            self.update_ui()
 
     def action_previous_line(self):
         if self.current_state > 0:
             self.current_state -= 1
 
-            self.current_line = self.states[
+            self.current_line = self.timeline[
                 self.current_state
-            ][1]
+            ]["line_number"]
 
-        self.update_ui()
-
-    def set_current_line(self, line_number):
-        self.current_line = line_number
-        self.update_ui()
-
-    def get_current_variables(self):
-        variables = {}
-
-        for state in self.states[:self.current_state + 1]:
-            variable_name = state[2]
-            variable_value = state[3]
-
-            variables[variable_name] = variable_value
-
-        return variables
+            self.update_ui()
 
     def update_ui(self):
+
+        if not self.timeline:
+            return
+
+        current_state = self.timeline[self.current_state]
+
+        line_number = current_state["line_number"]
+        variables_state = current_state["state"]
 
         label = self.query_one(
             "#timeline-label",
             Label
         )
 
-        # Get current historical state
-        current_state = self.states[self.current_state]
-
-        line_number = current_state[1]
-        variable_name = current_state[2]
-        variable_value = current_state[3]
-
         label.update(
-            f"State {self.current_state + 1} | "
-            f"Line {line_number} | "
-            f"{variable_name} = {variable_value}"
+            f"State {current_state['state_number']} | "
+            f"Line {line_number}"
         )
 
-        # Remove old highlighting from all source lines
-        for number in range(1, len(self.source_lines) + 1):
+        # Remove old highlighting
+        for number in range(
+            1,
+            len(self.source_lines) + 1
+        ):
             line = self.query_one(
                 f"#line-{number}"
             )
 
             line.remove_class("current-line")
 
-        # Highlight current source line
+        # Highlight current line
         current = self.query_one(
-            f"#line-{self.current_line}"
+            f"#line-{line_number}"
         )
 
         current.add_class("current-line")
 
+        # Update watch variables
         variables = self.query_one(
             "#watch-variables",
             Static
         )
 
-        # Get historical variables
-        current_variables = self.get_current_variables()
-
-        if current_variables:
+        if variables_state:
             variables_text = "\n".join(
                 f"{name} = {value}"
-                for name, value in current_variables.items()
+                for name, value in variables_state.items()
             )
 
             variables.update(variables_text)
