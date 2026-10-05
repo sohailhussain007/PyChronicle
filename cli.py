@@ -1,7 +1,10 @@
 import click
 
 from execution_engine import run_program
-from state_reconstruction import get_timeline_for_ui
+from storage.state_storage import SQLiteStateStorage
+
+
+DATABASE_FILE = "pychronicle.db"
 
 
 @click.group()
@@ -21,22 +24,17 @@ def run(filename, watch_variable):
     if watch_variable:
         click.echo(f"\nWatching variable: {watch_variable}")
 
-        timeline = get_timeline_for_ui("pychronicle.db")
+        storage = SQLiteStateStorage(DATABASE_FILE)
+        states = storage.get_states(watch_variable)
+        storage.close()
 
-        found = False
-
-        for item in timeline:
-            if watch_variable in item["state"]:
-                value = item["state"][watch_variable]
-
+        if states:
+            for timestamp, line_number, variable_name, value in states:
                 click.echo(
-                    f"Line {item['line_number']} -> "
-                    f"{watch_variable} = {value}"
+                    f"Line {line_number} -> "
+                    f"{variable_name} = {value}"
                 )
-
-                found = True
-
-        if not found:
+        else:
             click.echo(
                 f"Variable '{watch_variable}' was not found."
             )
