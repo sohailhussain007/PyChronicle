@@ -1,12 +1,33 @@
 import ast
 import json
+
+
+def get_assignment_names(target):
+    if isinstance(target, ast.Name):
+        return [target.id]
+
+    if isinstance(target, (ast.Tuple, ast.List)):
+        names = []
+
+        for element in target.elts:
+            names.extend(get_assignment_names(element))
+
+        return names
+
+    return []
+
+
 class ASTRewriter(ast.NodeTransformer):
+
     def visit_Assign(self, node):
         self.generic_visit(node)
+
         hooks = []
+
         for target in node.targets:
-            if isinstance(target, ast.Name):
-                variable_name = target.id
+            variable_names = get_assignment_names(target)
+
+            for variable_name in variable_names:
                 hook = ast.Expr(
                     value=ast.Call(
                         func=ast.Name(
@@ -29,40 +50,98 @@ class ASTRewriter(ast.NodeTransformer):
                 hook.col_offset = node.col_offset
 
                 hooks.append(hook)
+
         if hooks:
             return [node] + hooks
+
         return node
+
+    def visit_AugAssign(self, node):
+        self.generic_visit(node)
+
+        variable_names = get_assignment_names(node.target)
+
+        hooks = []
+
+        for variable_name in variable_names:
+            hook = ast.Expr(
+                value=ast.Call(
+                    func=ast.Name(
+                        id="capture_state",
+                        ctx=ast.Load()
+                    ),
+                    args=[
+                        ast.Constant(value=variable_name),
+                        ast.Name(
+                            id=variable_name,
+                            ctx=ast.Load()
+                        ),
+                        ast.Constant(value=node.lineno)
+                    ],
+                    keywords=[]
+                )
+            )
+
+            hook.lineno = node.lineno
+            hook.col_offset = node.col_offset
+
+            hooks.append(hook)
+
+        if hooks:
+            return [node] + hooks
+
+        return node
+
+
 def rewrite_source(source_code):
     tree = ast.parse(source_code)
+
     rewriter = ASTRewriter()
     new_tree = rewriter.visit(tree)
+
     ast.fix_missing_locations(new_tree)
+
     return ast.unparse(new_tree)
+
+
 def analyze_code(source_code):
     tree = ast.parse(source_code)
+
     assignments = []
     variables = set()
+
     for node in ast.walk(tree):
+
         if isinstance(node, ast.Assign):
+
             for target in node.targets:
-                if isinstance(target, ast.Name):
-                    variable_name = target.id
+                variable_names = get_assignment_names(target)
+
+                for variable_name in variable_names:
+
                     if variable_name in variables:
                         assignment_type = "update"
                     else:
                         assignment_type = "new assignment"
                         variables.add(variable_name)
+
                     assignments.append({
                         "variable_name": variable_name,
                         "line_number": node.lineno,
                         "assignment_type": assignment_type
                     })
+
     return assignments
+
+
 if __name__ == "__main__":
+
     source_code = """x = 10
 x = 20
 y = x + 5"""
+
     print("Assignment Information:")
     print(json.dumps(analyze_code(source_code), indent=4))
+
     print("\nInstrumented Code:")
     print(rewrite_source(source_code))
