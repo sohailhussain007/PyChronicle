@@ -162,6 +162,32 @@ class SQLiteStateStorage(StateStorage):
             for timestamp, line_number, variable_name, serialized_value in rows
         ]
 
+
+    def get_state_at(self, line_number):
+        """Reconstruct the complete variable state at a line."""
+        if not isinstance(line_number, int):
+            raise TypeError("line_number must be an integer")
+
+        if line_number < 1:
+            raise ValueError("line_number must be greater than or equal to 1")
+
+        cursor = self.connection.execute(
+            """
+            SELECT line_number, variable_name, serialized_value
+            FROM variable_states
+            WHERE line_number <= ?
+            ORDER BY line_number ASC, timestamp ASC, id ASC
+            """,
+            (line_number,),
+        )
+
+        state = {}
+
+        for stored_line, variable_name, serialized_value in cursor.fetchall():
+            state[variable_name] = pickle.loads(serialized_value)
+
+        return state
+
     def clear(self):
         """Remove all stored variable states."""
         self.connection.execute("DELETE FROM variable_states")
@@ -241,6 +267,28 @@ class InMemoryStateStorage(StateStorage):
             for timestamp, line_number, variable_name, serialized_value
             in ordered_states
         ]
+
+
+    def get_state_at(self, line_number):
+        """Reconstruct the complete variable state at a line."""
+        if not isinstance(line_number, int):
+            raise TypeError("line_number must be an integer")
+
+        if line_number < 1:
+            raise ValueError("line_number must be greater than or equal to 1")
+
+        ordered_states = sorted(
+            self.states,
+            key=lambda state: state[0],
+        )
+
+        state = {}
+
+        for timestamp, stored_line, variable_name, serialized_value in ordered_states:
+            if stored_line <= line_number:
+                state[variable_name] = pickle.loads(serialized_value)
+
+        return state
 
     def clear(self):
         """Remove all stored states from memory."""
