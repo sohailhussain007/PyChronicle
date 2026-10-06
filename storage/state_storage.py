@@ -84,10 +84,29 @@ class SQLiteStateStorage(StateStorage):
         variable_name,
         value,
     ):
-        """Serialize and save a variable state to SQLite."""
+        """Serialize and save a variable state only when it changes."""
         _validate_state(timestamp, line_number, variable_name)
 
         serialized_value = pickle.dumps(value)
+
+        cursor = self.connection.execute(
+            """
+            SELECT serialized_value
+            FROM variable_states
+            WHERE variable_name = ?
+            ORDER BY timestamp DESC, id DESC
+            LIMIT 1
+            """,
+            (variable_name,),
+        )
+
+        previous_state = cursor.fetchone()
+
+        if previous_state is not None:
+            previous_serialized_value = previous_state[0]
+
+            if previous_serialized_value == serialized_value:
+                return
 
         self.connection.execute(
             """
@@ -167,10 +186,20 @@ class InMemoryStateStorage(StateStorage):
         variable_name,
         value,
     ):
-        """Serialize and store a variable state in memory."""
+        """Serialize and store a variable state only when it changes."""
         _validate_state(timestamp, line_number, variable_name)
 
         serialized_value = pickle.dumps(value)
+
+        if self.states:
+            for state in reversed(self.states):
+                if state[2] == variable_name:
+                    previous_serialized_value = state[3]
+
+                    if previous_serialized_value == serialized_value:
+                        return
+
+                    break
 
         self.states.append(
             (
