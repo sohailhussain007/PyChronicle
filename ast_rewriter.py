@@ -5,8 +5,8 @@ class ASTRewriter(ast.NodeTransformer):
         self.generic_visit(node)
         hooks = []
         for target in node.targets:
-            if isinstance(target, ast.Name):
-                variable_name = target.id
+            variable_names = get_assignment_names(target)
+            for variable_name in variable_names:
                 hook = ast.Expr(
                     value=ast.Call(
                         func=ast.Name(
@@ -28,11 +28,20 @@ class ASTRewriter(ast.NodeTransformer):
             return [node] + hooks
         return node
 def rewrite_source(source_code):
-    tree = ast.parse(source_code)
+    tree= ast.parse(source_code)
     rewriter = ASTRewriter()
     new_tree = rewriter.visit(tree)
     ast.fix_missing_locations(new_tree)
     return ast.unparse(new_tree)
+def get_assignment_names(target):
+    if isinstance(target, ast.Name):
+        return [target.id]
+    if isinstance(target, (ast.Tuple, ast.List)):
+        names = []
+        for element in target.elts:
+            names.extend(get_assignment_names(element))
+        return names
+    return []
 def analyze_code(source_code):
     tree = ast.parse(source_code)
     assignments = []
@@ -40,8 +49,8 @@ def analyze_code(source_code):
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign):
             for target in node.targets:
-                if isinstance(target, ast.Name):
-                    variable_name = target.id
+                variable_names = get_assignment_names(target)
+                for variable_name in variable_names:
                     if variable_name in variables:
                         assignment_type = "update"
                     else:
