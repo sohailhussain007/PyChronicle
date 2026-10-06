@@ -27,6 +27,31 @@ class ASTRewriter(ast.NodeTransformer):
         if hooks:
             return [node] + hooks
         return node
+    def visit_AugAssign(self, node):
+        self.generic_visit(node)
+        variable_names = get_assignment_names(node.target)
+        hooks = []
+        for variable_name in variable_names:
+            hook = ast.Expr(
+                value=ast.Call(
+                    func=ast.Name(
+                        id="capture_state",
+                        ctx=ast.Load()
+                    ),
+                    args=[
+                        ast.Constant(value=variable_name),
+                        ast.Name(
+                            id=variable_name,
+                            ctx=ast.Load()
+                        )
+                    ],
+                    keywords=[]
+                )
+            )
+            hooks.append(hook)
+        if hooks:
+            return [node] + hooks
+        return node
 def rewrite_source(source_code):
     tree= ast.parse(source_code)
     rewriter = ASTRewriter()

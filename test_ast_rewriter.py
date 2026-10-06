@@ -137,3 +137,13 @@ def test_rewrite_assignment_inside_function():
     result = rewrite_source(code)
     assert "capture_state('x', x)" in result
     assert "capture_state('y', y)" in result
+def test_augmented_assignment():
+    code = """x = 10
+x += 5"""
+    result = rewrite_source(code)
+    assert "capture_state('x', x)" in result
+def test_chained_assignment():
+    code = "a = b = 10"
+    result = rewrite_source(code)
+    assert "capture_state('a', a)" in result
+    assert "capture_state('b', b)" in result
