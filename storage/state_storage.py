@@ -63,7 +63,7 @@ class SQLiteStateStorage(StateStorage):
         self._create_schema()
 
     def _create_schema(self):
-        """Create the state storage table if it does not exist."""
+        """Create the state storage table and performance index."""
         self.connection.execute(
             """
             CREATE TABLE IF NOT EXISTS variable_states (
@@ -75,6 +75,14 @@ class SQLiteStateStorage(StateStorage):
             )
             """
         )
+
+        self.connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_variable_states_name_time
+            ON variable_states (variable_name, timestamp DESC, id DESC)
+            """
+        )
+
         self.connection.commit()
 
     def save_state(
@@ -161,7 +169,6 @@ class SQLiteStateStorage(StateStorage):
             )
             for timestamp, line_number, variable_name, serialized_value in rows
         ]
-
 
     def get_state_at(self, line_number):
         """Reconstruct the complete variable state at a line."""
@@ -267,7 +274,6 @@ class InMemoryStateStorage(StateStorage):
             for timestamp, line_number, variable_name, serialized_value
             in ordered_states
         ]
-
 
     def get_state_at(self, line_number):
         """Reconstruct the complete variable state at a line."""
