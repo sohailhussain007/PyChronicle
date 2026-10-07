@@ -211,6 +211,7 @@ class InMemoryStateStorage(StateStorage):
     def __init__(self):
         """Initialize an empty in-memory state list."""
         self.states = []
+        self.latest_values = {}
 
     def save_state(
         self,
@@ -224,15 +225,10 @@ class InMemoryStateStorage(StateStorage):
 
         serialized_value = pickle.dumps(value)
 
-        if self.states:
-            for state in reversed(self.states):
-                if state[2] == variable_name:
-                    previous_serialized_value = state[3]
+        previous_serialized_value = self.latest_values.get(variable_name)
 
-                    if previous_serialized_value == serialized_value:
-                        return
-
-                    break
+        if previous_serialized_value == serialized_value:
+            return
 
         self.states.append(
             (
@@ -242,6 +238,8 @@ class InMemoryStateStorage(StateStorage):
                 serialized_value,
             )
         )
+
+        self.latest_values[variable_name] = serialized_value
 
     def get_states(self, variable_name=None):
         """Return stored variable states chronologically."""
@@ -299,7 +297,9 @@ class InMemoryStateStorage(StateStorage):
     def clear(self):
         """Remove all stored states from memory."""
         self.states = []
+        self.latest_values = {}
 
     def close(self):
         """Close the in-memory storage."""
         self.states = []
+        self.latest_values = {}
